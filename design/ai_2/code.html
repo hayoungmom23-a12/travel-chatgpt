@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>여정 AI - 여행 계획 AI Agent (데스크톱)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+<style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 6px;
+    }
+
+    /* CSS Radio Tab Pure-CSS Display Control */
+    #d-tab-input:checked ~ header label[for="d-tab-input"],
+    #d-tab-process:checked ~ header label[for="d-tab-process"],
+    #d-tab-result:checked ~ header label[for="d-tab-result"],
+    #d-tab-error:checked ~ header label[for="d-tab-error"] {
+      background-color: #0077b6;
+      color: #ffffff;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    /* Section Visibility controlled by peer radio checked state */
+    #d-tab-input:checked ~ main #desk-input {
+      display: block !important;
+    }
+    #d-tab-process:checked ~ main #desk-process {
+      display: block !important;
+    }
+    #d-tab-result:checked ~ main #desk-result {
+      display: block !important;
+    }
+    #d-tab-error:checked ~ main #desk-error {
+      display: block !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 antialiased relative">
+<!-- Pure CSS Peer Radio Buttons for Zero-JS & Guaranteed Tab Switching -->
+<input checked="" class="hidden peer/dinput" id="d-tab-input" name="desktop_state" type="radio"/>
+<input class="hidden peer/dprocess" id="d-tab-process" name="desktop_state" type="radio"/>
+<input class="hidden peer/dresult" id="d-tab-result" name="desktop_state" type="radio"/>
+<input class="hidden peer/derror" id="d-tab-error" name="desktop_state" type="radio"/>
+<!-- Desktop Top Navigation -->
+<header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-40 px-8 py-3.5 flex items-center justify-between shadow-xs">
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-3 cursor-pointer" onclick="switchDesktopState('input')">
+<div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#005d90] to-[#0077b6] flex items-center justify-center text-white shadow-lg shadow-sky-600/20">
+<i class="fa-solid fa-compass text-lg"></i>
+</div>
+<div>
+<span class="text-lg font-extrabold text-slate-900 tracking-tight">여정 (Yeojeong) AI</span>
+<span class="block text-xs font-semibold text-[#0077b6]">스마트 조건 맞춤형 여행 일정 생성 에이전트</span>
+</div>
+</div>
+<div class="hidden md:flex items-center text-xs text-slate-400 space-x-2 pl-4 border-l border-slate-200">
+<span class="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full font-medium border border-sky-100">PRD 기반 v1.0 설계안</span>
+<span>·</span>
+<span>국내 및 글로벌 자유여행 지원</span>
+</div>
+</div>
+<!-- State Switcher Control (CSS Labels + JS Click Dual Support) -->
+<div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 select-none">
+<label class="dstate-tab px-3.5 py-1.5 rounded-lg hover:bg-slate-200 text-slate-600 cursor-pointer transition-all" for="d-tab-input" id="dtab-input" onclick="switchDesktopState('input')">
+        1. 조건 입력 상태
+      </label>
+<label class="dstate-tab px-3.5 py-1.5 rounded-lg hover:bg-slate-200 text-slate-600 cursor-pointer transition-all" for="d-tab-process" id="dtab-process" onclick="switchDesktopState('process')">
+        2. AI 처리 중
+      </label>
+<label class="dstate-tab px-3.5 py-1.5 rounded-lg hover:bg-slate-200 text-slate-600 cursor-pointer transition-all" for="d-tab-result" id="dtab-result" onclick="switchDesktopState('result')">
+        3. 결과 브리핑
+      </label>
+<label class="dstate-tab px-3.5 py-1.5 rounded-lg hover:bg-slate-200 text-slate-600 cursor-pointer transition-all" for="d-tab-error" id="dtab-error" onclick="switchDesktopState('error')">
+        4. 오류/조건 충돌
+      </label>
+</div>
+<div class="flex items-center space-x-3">
+<button class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition flex items-center">
+<i class="fa-regular fa-share-from-square mr-1.5"></i>일정 공유
+      </button>
+<div class="w-8 h-8 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-xs text-slate-600 font-bold">
+        여행
+      </div>
+</div>
+</header>
+<!-- Main Work Area -->
+<main class="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
+<!-- ============================================== -->
+<!-- DESKTOP STATE 1: INPUT STATE (2-Column Form Layout) -->
+<!-- ============================================== -->
+<section class="desk-content hidden space-y-6" id="desk-input">
+<!-- Hero Top Banner -->
+<div class="bg-gradient-to-r from-[#005d90] via-[#0077b6] to-[#0096c7] rounded-3xl p-8 text-white shadow-xl relative overflow-hidden flex justify-between items-center">
+<div class="max-w-2xl relative z-10">
+<div class="inline-flex items-center space-x-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold mb-3">
+<span>✨ 2분 안에 완성하는 맞춤형 여행 초안</span>
+</div>
+<h1 class="text-3xl font-extrabold tracking-tight">조건만 넣으면 동선, 예산, 날씨 대안까지 한눈에</h1>
+<p class="text-sky-100 text-sm mt-2 font-normal leading-relaxed">
+            여행지, 인원, 예산, 스타일 및 동행자 관계를 입력하세요. AI가 이동 피로도와 예산 분배를 고려한 최적의 일정을 제안합니다.
+          </p>
+</div>
+<div class="hidden lg:flex items-center space-x-4 text-white/20 text-8xl">
+<i class="fa-solid fa-map-location-dot"></i>
+</div>
+</div>
+<!-- 2-Column Grid: Form Inputs (Left) & Real-time Live Preview/Guide (Right) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left: Input Form Card (8 cols) -->
+<div class="lg:col-span-8 bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
+<div class="flex items-center justify-between border-b border-slate-100 pb-4">
+<h2 class="text-lg font-bold text-slate-900 flex items-center">
+<i class="fa-solid fa-sliders text-[#0077b6] mr-2"></i>여행 기본 조건 설정
+            </h2>
+<span class="text-xs text-slate-400 font-normal"><span class="text-orange-500">*</span> 필수 항목</span>
+</div>
+<!-- Grid for Destination & Dates -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+<!-- Destination -->
+<div>
+<label class="block text-xs font-bold text-slate-800 mb-1.5 flex items-center justify-between">
+<span><i class="fa-solid fa-location-dot text-[#0077b6] mr-1.5"></i>여행지 (국내/해외) <span class="text-orange-500">*</span></span>
+<span class="text-[11px] text-slate-400">도시 또는 지역</span>
+</label>
+<input class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0077b6] focus:bg-white transition" type="text" value="제주도 서귀포 및 동부"/>
+<div class="flex gap-1.5 mt-2 text-xs">
+<span class="px-2 py-0.5 bg-slate-100 hover:bg-sky-50 hover:text-[#0077b6] text-slate-600 rounded-md cursor-pointer transition">제주</span>
+<span class="px-2 py-0.5 bg-slate-100 hover:bg-sky-50 hover:text-[#0077b6] text-slate-600 rounded-md cursor-pointer transition">강릉&amp;속초</span>
+<span class="px-2 py-0.5 bg-slate-100 hover:bg-sky-50 hover:text-[#0077b6] text-slate-600 rounded-md cursor-pointer transition">후쿠오카</span>
+<span class="px-2 py-0.5 bg-slate-100 hover:bg-sky-50 hover:text-[#0077b6] text-slate-600 rounded-md cursor-pointer transition">타이베이</span>
+</div>
+</div>
+<!-- Schedule -->
+<div>
+<label class="block text-xs font-bold text-slate-800 mb-1.5">
+<i class="fa-regular fa-calendar-days text-[#0077b6] mr-1.5"></i>일정 (출발~도착일 또는 기간) <span class="text-orange-500">*</span>
+</label>
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+<span class="block text-[10px] text-slate-400 font-medium">출발일</span>
+<input class="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none mt-0.5" type="text" value="2025. 05. 09 (금)"/>
+</div>
+<div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+<span class="block text-[10px] text-slate-400 font-medium">도착일 (2박 3일)</span>
+<input class="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none mt-0.5" type="text" value="2025. 05. 11 (일)"/>
+</div>
+</div>
+</div>
+</div>
+<!-- People & Companion Relation & Budget -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+<div>
+<label class="block text-xs font-bold text-slate-800 mb-1.5">
+<i class="fa-solid fa-users text-[#0077b6] mr-1.5"></i>인원 <span class="text-orange-500">*</span>
+</label>
+<select class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0077b6]">
+<option>2명 (소규모)</option>
+<option>1명 (나홀로 여행)</option>
+<option>3~4명</option>
+<option>5인 이상 단체</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-bold text-slate-800 mb-1.5">
+<i class="fa-solid fa-heart text-[#0077b6] mr-1.5"></i>동행자 관계 <span class="text-orange-500">*</span>
+</label>
+<select class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0077b6]">
+<option selected="">연인/커플</option>
+<option>친구</option>
+<option>부모님과 효도여행</option>
+<option>어린 자녀 동반 가족</option>
+<option>혼자만의 힐링</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-bold text-slate-800 mb-1.5 flex items-center justify-between">
+<span><i class="fa-solid fa-won-sign text-[#0077b6] mr-1.5"></i>총 예산 (총액) <span class="text-orange-500">*</span></span>
+</label>
+<div class="relative">
+<input class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0077b6] pl-7" type="text" value="1,200,000"/>
+<span class="absolute left-2.5 top-2.5 text-xs font-bold text-slate-400">₩</span>
+</div>
+<span class="block text-[10px] text-slate-400 mt-1">1인 환산 약 60만원</span>
+</div>
+</div>
+<!-- Travel Style Multi-select -->
+<div>
+<label class="block text-xs font-bold text-slate-800 mb-2">
+<i class="fa-solid fa-compass text-[#0077b6] mr-1.5"></i>여행 스타일 (다중 선택 가능)
+            </label>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+<label class="flex items-center p-3 rounded-2xl border-2 border-[#0077b6] bg-sky-50/70 text-[#005d90] cursor-pointer font-bold transition">
+<input checked="" class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span>🌊 자연 &amp; 힐링</span>
+</label>
+<label class="flex items-center p-3 rounded-2xl border-2 border-[#0077b6] bg-sky-50/70 text-[#005d90] cursor-pointer font-bold transition">
+<input checked="" class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span>☕ 감성 카페 &amp; 미식</span>
+</label>
+<label class="flex items-center p-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 cursor-pointer hover:border-slate-300 transition">
+<input class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span>🏃 알찬 액티비티</span>
+</label>
+<label class="flex items-center p-3 rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 cursor-pointer hover:border-slate-300 transition">
+<input class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span>🏛️ 문화·역사 탐방</span>
+</label>
+</div>
+</div>
+<!-- Avoided Elements -->
+<div>
+<label class="block text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
+<span><i class="fa-solid fa-ban text-[#ae3115] mr-1.5"></i>피하고 싶은 것 (제외 조건)</span>
+<span class="text-[11px] text-[#ae3115] font-semibold bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                AI 동선 최적화 시 자동 필터링
+              </span>
+</label>
+<div class="flex flex-wrap gap-2 mb-2">
+<span class="inline-flex items-center px-3 py-1.5 rounded-xl bg-orange-50 text-orange-800 border border-orange-200 text-xs font-semibold">
+                긴 도보 이동 (1시간 이상)
+                <button class="ml-2 text-orange-400 hover:text-orange-700" type="button"><i class="fa-solid fa-xmark text-xs"></i></button>
+</span>
+<span class="inline-flex items-center px-3 py-1.5 rounded-xl bg-orange-50 text-orange-800 border border-orange-200 text-xs font-semibold">
+                대기시간 40분 이상 맛집
+                <button class="ml-2 text-orange-400 hover:text-orange-700" type="button"><i class="fa-solid fa-xmark text-xs"></i></button>
+</span>
+</div>
+<input class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0077b6]" placeholder="직접 입력: 예) 가파른 계단, 시끄러운 클럽, 향신료 강한 음식 등" type="text"/>
+</div>
+<!-- CTA Button -->
+<div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+<div class="text-xs text-slate-400">
+<i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i>입력 조건 충돌 시 자연어로 자동 보완 분석을 진행합니다.
+            </div>
+<button class="bg-[#0077b6] hover:bg-[#005d90] active:scale-95 text-white px-8 py-3.5 rounded-2xl font-bold text-sm shadow-lg shadow-sky-600/30 flex items-center space-x-2 transition-all cursor-pointer" onclick="startAiPlanningFlow()">
+<span>여행 계획 만들기</span>
+<i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+</button>
+</div>
+</div>
+<!-- Right: AI Planner Assist & Preview Guide (4 cols) -->
+<div class="lg:col-span-4 space-y-5">
+<!-- Guide Box -->
+<div class="bg-gradient-to-br from-slate-900 to-[#131b2e] rounded-3xl p-6 text-white shadow-md">
+<span class="inline-block px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 mb-3">
+              AI 플래너 가이드
+            </span>
+<h3 class="text-base font-bold text-white">어떻게 만들어지나요?</h3>
+<div class="mt-4 space-y-3.5 text-xs text-slate-300">
+<div class="flex items-start space-x-3">
+<span class="w-5 h-5 rounded-full bg-[#0077b6] text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</span>
+<p><strong class="text-white">동선 낭비 제거:</strong> 지도 기반 반경을 고려해 일자별 동선 피로도를 최소화합니다.</p>
+</div>
+<div class="flex items-start space-x-3">
+<span class="w-5 h-5 rounded-full bg-[#0077b6] text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</span>
+<p><strong class="text-white">현실적 예산 배분:</strong> 1인당 및 총액 기준으로 숙박, 식비, 액티비티를 균형 있게 나눕니다.</p>
+</div>
+<div class="flex items-start space-x-3">
+<span class="w-5 h-5 rounded-full bg-[#0077b6] text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</span>
+<p><strong class="text-white">우천 시 Plan B:</strong> 갑작스러운 비에도 당황하지 않도록 인근 실내 대안을 미리 탑재합니다.</p>
+</div>
+</div>
+</div>
+<!-- Trust & Accuracy Notice -->
+<div class="bg-amber-50 rounded-3xl p-5 border border-amber-200 text-amber-900 text-xs space-y-2">
+<div class="font-bold flex items-center text-amber-800">
+<i class="fa-solid fa-circle-info mr-1.5 text-amber-600"></i>가격 및 영업시간 안내
+            </div>
+<p class="text-amber-800/90 leading-relaxed text-[11px]">
+              AI가 추천하는 모든 관광지 및 식당의 운영시간과 비용은 최근 데이터 기반의 추정치입니다. 변동 가능성이 있으므로 출발 전 공식 채널을 확인해주세요.
+            </p>
+</div>
+</div>
+</div>
+</section>
+<!-- ============================================== -->
+<!-- DESKTOP STATE 2: LOADING / PROCESSING STATE -->
+<!-- ============================================== -->
+<section class="desk-content hidden max-w-2xl mx-auto py-12" id="desk-process">
+<div class="bg-white rounded-3xl p-10 border border-slate-200 shadow-xl text-center space-y-6">
+<!-- Radar / Spinner Animation -->
+<div class="relative w-32 h-32 mx-auto flex items-center justify-center">
+<div class="absolute inset-0 rounded-full border-4 border-sky-100 animate-ping opacity-50"></div>
+<div class="absolute inset-2 rounded-full border-4 border-dashed border-[#0077b6] animate-spin" style="animation-duration: 6s;"></div>
+<div class="w-20 h-20 bg-gradient-to-tr from-[#005d90] to-[#0077b6] rounded-3xl flex items-center justify-center text-white shadow-xl shadow-sky-600/30 transform -rotate-3">
+<i class="fa-solid fa-compass text-3xl animate-pulse"></i>
+</div>
+</div>
+<div>
+<span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-sky-50 text-[#0077b6] border border-sky-200 mb-2">
+            AI 에이전트 다각도 추론 중
+          </span>
+<h2 class="text-2xl font-extrabold text-slate-900">제주도 2박 3일 맞춤 일정을 조율하고 있습니다</h2>
+<p class="text-sm text-slate-500 mt-2">총 120만원 예산, 연인 커플, 힐링 &amp; 카페 중심 코스를 시뮬레이션 중입니다.</p>
+</div>
+<!-- 4-Step Progress Indicator & Log -->
+<div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 text-left space-y-3.5 text-xs max-w-lg mx-auto">
+<div class="flex items-center space-x-3 text-emerald-600 font-semibold">
+<i class="fa-solid fa-circle-check text-base"></i>
+<span>1단계: 입력 조건 충돌 여부 및 동행자 편의성 검토 완료</span>
+</div>
+<div class="flex items-center space-x-3 text-[#0077b6] font-semibold">
+<i class="fa-solid fa-circle-notch fa-spin text-base"></i>
+<span>2단계: 일자별 이동 동선 최적화 및 과도한 도보 배제 필터링 중...</span>
+</div>
+<div class="flex items-center space-x-3 text-slate-400">
+<i class="fa-regular fa-circle text-base"></i>
+<span>3단계: 항목별(숙소, 식비, 교통, 예비비) 추정 예산표 작성</span>
+</div>
+<div class="flex items-center space-x-3 text-slate-400">
+<i class="fa-regular fa-circle text-base"></i>
+<span>4단계: 필수 준비물 체크리스트 및 우천 시 실내 대안 매핑</span>
+</div>
+</div>
+<!-- Direct Result Action -->
+<div class="pt-4 border-t border-slate-100 flex items-center justify-center space-x-4 text-xs text-slate-400">
+<span>평균 완료 시간: 약 2~3초</span>
+<span>·</span>
+<button class="text-[#0077b6] font-bold hover:underline flex items-center" onclick="switchDesktopState('result')">
+            결과 화면 미리보기 <i class="fa-solid fa-arrow-right ml-1"></i>
+</button>
+</div>
+</div>
+</section>
+<!-- ============================================== -->
+<!-- DESKTOP STATE 3: RESULT BRIEFING STATE -->
+<!-- ============================================== -->
+<section class="desk-content hidden space-y-6" id="desk-result">
+<!-- 1. 여행 요약 카드 (Summary Header) -->
+<div class="bg-gradient-to-r from-[#005d90] via-[#0077b6] to-[#0096c7] rounded-3xl p-7 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div>
+<div class="flex items-center space-x-2.5 mb-2">
+<span class="bg-white/20 backdrop-blur-md px-3 py-0.5 rounded-full text-xs font-semibold text-white">생성 완료 초안</span>
+<span class="text-xs text-sky-200">2025. 05. 09 (금) ~ 05. 11 (일) · 2박 3일</span>
+</div>
+<h1 class="text-2xl md:text-3xl font-black tracking-tight text-white">서귀포 &amp; 동부 감성 힐링 로드</h1>
+<p class="text-sky-100 text-sm mt-1">2인 커플 · 오션뷰 카페, 완만한 산책로 및 로컬 미식 코스</p>
+</div>
+<div class="flex items-center space-x-6 bg-white/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/20">
+<div class="text-center">
+<span class="text-[11px] text-sky-200 block">총 예산 배분</span>
+<span class="text-base font-extrabold text-white">1,170,000원</span>
+</div>
+<div class="h-8 w-px bg-white/20"></div>
+<div class="text-center">
+<span class="text-[11px] text-sky-200 block">1인 환산 금액</span>
+<span class="text-base font-extrabold text-amber-300">585,000원</span>
+</div>
+<div class="h-8 w-px bg-white/20"></div>
+<div class="text-center">
+<span class="text-[11px] text-sky-200 block">이동 피로도</span>
+<span class="text-base font-extrabold text-emerald-300">낮음 (여유)</span>
+</div>
+</div>
+<div class="flex space-x-2">
+<button class="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/30 text-xs font-bold text-white transition flex items-center" onclick="switchDesktopState('input')">
+<i class="fa-solid fa-sliders mr-1.5"></i>조건 재설정
+          </button>
+</div>
+</div>
+<!-- Main 2-Column Content: Left (Itinerary Timeline), Right (Budget + Checklist + Rainy Plan) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column: 일자별 코스 (7 cols) -->
+<div class="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+<div class="flex items-center justify-between border-b border-slate-100 pb-3">
+<div>
+<h2 class="text-base font-bold text-slate-900 flex items-center">
+<i class="fa-solid fa-route text-[#0077b6] mr-2"></i>일자별 추천 코스
+              </h2>
+<p class="text-xs text-slate-400 mt-0.5">시간대별 핵심 활동, 식사 및 이동·휴식 여유</p>
+</div>
+<!-- Day Selector Tabs -->
+<div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+<button class="px-3 py-1 rounded-lg bg-[#0077b6] text-white shadow-xs">1일차 (서귀포)</button>
+<button class="px-3 py-1 rounded-lg hover:bg-slate-200 text-slate-600">2일차 (동부)</button>
+<button class="px-3 py-1 rounded-lg hover:bg-slate-200 text-slate-600">3일차 (제주시)</button>
+</div>
+</div>
+<!-- Timeline Items -->
+<div class="space-y-4 relative before:absolute before:inset-0 before:left-4 before:w-0.5 before:bg-slate-200 pt-2">
+<!-- Item 1: 공항 도착 및 렌터카 -->
+<div class="relative pl-10 group">
+<div class="absolute left-2.5 top-2 w-3.5 h-3.5 rounded-full bg-[#0077b6] border-2 border-white shadow"></div>
+<div class="bg-slate-50 hover:bg-sky-50/50 p-4 rounded-2xl border border-slate-200 transition">
+<div class="flex justify-between items-center">
+<div class="flex items-center space-x-2">
+<span class="text-xs font-extrabold text-[#0077b6]">11:30</span>
+<span class="text-xs font-bold text-slate-900">제주공항 도착 &amp; 렌터카 인수</span>
+</div>
+<span class="text-[11px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-md font-semibold">이동 및 수속</span>
+</div>
+<p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                  공항 셔틀 탑승 후 차량 인수. 시내 혼잡을 피해 평화로를 타고 서귀포 방면으로 직행 (소요시간 약 50분).
+                </p>
+</div>
+</div>
+<!-- Item 2: 식사 제안 (성산/중문 로컬) -->
+<div class="relative pl-10 group">
+<div class="absolute left-2.5 top-2 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-white shadow"></div>
+<div class="bg-slate-50 hover:bg-amber-50/40 p-4 rounded-2xl border border-slate-200 transition">
+<div class="flex justify-between items-center">
+<div class="flex items-center space-x-2">
+<span class="text-xs font-extrabold text-amber-600">13:00</span>
+<span class="text-xs font-bold text-slate-900">점심 식사 : 중문 보말칼국수 &amp; 성게전복죽</span>
+</div>
+<span class="text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-semibold border border-amber-200">
+                    공식 채널 확인 필요 (추정 3.2만원)
+                  </span>
+</div>
+<p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                  현지 식재료 기반의 담백한 맛집. 대기 줄이 길 경우 바로 옆 향토음식점으로 대체 가능하도록 동선 확보.
+                </p>
+</div>
+</div>
+<!-- Item 3: 자연 & 힐링 (비자림 / 안덕계곡) -->
+<div class="relative pl-10 group">
+<div class="absolute left-2.5 top-2 w-3.5 h-3.5 rounded-full bg-emerald-600 border-2 border-white shadow"></div>
+<div class="bg-slate-50 hover:bg-emerald-50/40 p-4 rounded-2xl border border-slate-200 transition">
+<div class="flex justify-between items-center">
+<div class="flex items-center space-x-2">
+<span class="text-xs font-extrabold text-emerald-700">15:00</span>
+<span class="text-xs font-bold text-slate-900">안덕계곡 상록수림 산책 &amp; 오설록 티뮤지엄</span>
+</div>
+<span class="text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-semibold">도보 25분 이내</span>
+</div>
+<p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                  평탄한 나무 데크 코스로 구성되어 긴 도보 피로도 배제. 피톤치드 힐링 및 녹차 아이스크림 휴식.
+                </p>
+</div>
+</div>
+<!-- Item 4: 일몰 카페 & 호텔 체크인 -->
+<div class="relative pl-10 group">
+<div class="absolute left-2.5 top-2 w-3.5 h-3.5 rounded-full bg-indigo-600 border-2 border-white shadow"></div>
+<div class="bg-slate-50 hover:bg-indigo-50/40 p-4 rounded-2xl border border-slate-200 transition">
+<div class="flex justify-between items-center">
+<div class="flex items-center space-x-2">
+<span class="text-xs font-extrabold text-indigo-700">18:00</span>
+<span class="text-xs font-bold text-slate-900">법환포구 일몰 카페 &amp; 서귀포 호텔 체크인</span>
+</div>
+<span class="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md font-semibold">휴식 &amp; 야경</span>
+</div>
+<p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                  바다 노을을 보며 여유를 즐긴 뒤 체크인. 저녁은 서귀포 올레시장에서 흑돼지 강정과 딱새우회를 포장해 룸에서 편안하게 식사.
+                </p>
+</div>
+</div>
+</div>
+<!-- Bottom Sub-Action -->
+<div class="pt-2 border-t border-slate-100 flex justify-end">
+<button class="text-xs font-bold text-[#0077b6] hover:underline flex items-center" onclick="switchDesktopState('input')">
+<i class="fa-solid fa-arrow-rotate-left mr-1.5"></i>조건 다시 수정하기
+            </button>
+</div>
+</div>
+<!-- Right Column: 예산표 + 체크리스트 + 우천대안 (5 cols) -->
+<div class="lg:col-span-5 space-y-6">
+<!-- 1. 예상 예산 배분표 (Budget Table) -->
+<div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3">
+<div class="flex justify-between items-center">
+<div>
+<h3 class="text-sm font-bold text-slate-900 flex items-center">
+<i class="fa-solid fa-calculator text-[#0077b6] mr-2"></i>예상 예산 배분표
+                </h3>
+<span class="text-[11px] text-slate-400">총 120만원 한도 내 배분 (2인 기준)</span>
+</div>
+<span class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
+                *추정치
+              </span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-xs text-left">
+<thead>
+<tr class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+<th class="py-2 px-3">항목</th>
+<th class="py-2 px-3 text-right">총 금액</th>
+<th class="py-2 px-3 text-right">1인 환산</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 text-slate-700 font-medium">
+<tr>
+<td class="py-2 px-3 font-semibold">숙소 (2박 호텔)</td>
+<td class="py-2 px-3 text-right text-slate-900 font-bold">380,000원</td>
+<td class="py-2 px-3 text-right text-slate-500">190,000원</td>
+</tr>
+<tr>
+<td class="py-2 px-3 font-semibold">교통 (렌터카+주유)</td>
+<td class="py-2 px-3 text-right text-slate-900 font-bold">220,000원</td>
+<td class="py-2 px-3 text-right text-slate-500">110,000원</td>
+</tr>
+<tr>
+<td class="py-2 px-3 font-semibold">식비 &amp; 카페 (6끼)</td>
+<td class="py-2 px-3 text-right text-slate-900 font-bold">360,000원</td>
+<td class="py-2 px-3 text-right text-slate-500">180,000원</td>
+</tr>
+<tr>
+<td class="py-2 px-3 font-semibold">입장료 및 체험</td>
+<td class="py-2 px-3 text-right text-slate-900 font-bold">110,000원</td>
+<td class="py-2 px-3 text-right text-slate-500">55,000원</td>
+</tr>
+<tr class="bg-amber-50/40 text-amber-900">
+<td class="py-2 px-3 font-semibold">예비비 (비상/우천용)</td>
+<td class="py-2 px-3 text-right font-bold">100,000원</td>
+<td class="py-2 px-3 text-right">50,000원</td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="border-t-2 border-slate-300 font-black text-slate-900 bg-slate-50">
+<td class="py-2.5 px-3">합계 (잔여 30,000원)</td>
+<td class="py-2.5 px-3 text-right text-[#0077b6] font-extrabold">1,170,000원</td>
+<td class="py-2.5 px-3 text-right text-[#0077b6]">585,000원</td>
+</tr>
+</tfoot>
+</table>
+</div>
+<p class="text-[10px] text-slate-400">※ 항공료는 탑승 시기별 편차가 커 미포함. 공식 예약처 요금을 확인하세요.</p>
+</div>
+<!-- 2. 준비물 체크리스트 (Checklist) -->
+<div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3">
+<h3 class="text-sm font-bold text-slate-900 flex items-center">
+<i class="fa-solid fa-list-check text-[#0077b6] mr-2"></i>준비물 체크리스트
+            </h3>
+<div class="grid grid-cols-2 gap-2 text-xs">
+<label class="flex items-center p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+<input checked="" class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span class="line-through text-slate-400 font-medium">신분증/운전면허증</span>
+</label>
+<label class="flex items-center p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+<input checked="" class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span class="line-through text-slate-400 font-medium">모바일 탑승권</span>
+</label>
+<label class="flex items-center p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+<input class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span class="text-slate-700 font-medium">보조배터리 (기내 소지)</span>
+</label>
+<label class="flex items-center p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+<input class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span class="text-slate-700 font-medium">접이식 우산 / 양산</span>
+</label>
+<label class="flex items-center p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+<input class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span class="text-slate-700 font-medium">편한 운동화/슬리퍼</span>
+</label>
+<label class="flex items-center p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+<input class="accent-[#0077b6] mr-2 rounded" type="checkbox"/>
+<span class="text-slate-700 font-medium">개인 상비약 (소화제)</span>
+</label>
+</div>
+</div>
+<!-- 3. 우천 시 실내 대안 (Rainy Plan B) -->
+<div class="bg-gradient-to-br from-indigo-50 to-sky-50 rounded-3xl p-6 border border-indigo-200/80 shadow-sm space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm shadow-sm">
+<i class="fa-solid fa-cloud-showers-heavy"></i>
+</div>
+<div>
+<h3 class="text-xs font-bold text-slate-900">우천 시 실내 대안 (Plan B)</h3>
+<span class="text-[10px] text-indigo-700 font-medium">비 예보 시 동선 변경 없이 즉시 대체</span>
+</div>
+</div>
+<span class="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">실내 전환</span>
+</div>
+<div class="space-y-2 text-xs">
+<div class="bg-white p-3 rounded-xl border border-indigo-100 shadow-2xs">
+<span class="font-bold text-slate-800 block">안덕계곡 산책 → [대체] 빛의 벙커 몰입형 미디어아트</span>
+<p class="text-[11px] text-slate-500 mt-1">대형 실내 전시장으로 비를 피해 예술 감상 가능. 모바일 티켓 사전 예약 권장.</p>
+</div>
+<div class="bg-white p-3 rounded-xl border border-indigo-100 shadow-2xs">
+<span class="font-bold text-slate-800 block">성산 야외 포구 → [대체] 아쿠아플라넷 제주</span>
+<p class="text-[11px] text-slate-500 mt-1">성산일출봉 바로 옆에 위치하여 식사 코스를 유지하면서 실내 관람 가능.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Caution Bottom Notice -->
+<div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<i class="fa-solid fa-circle-exclamation text-amber-600 text-lg"></i>
+<div>
+<span class="font-bold block">공식 채널 사전 확인 안내</span>
+<span class="text-amber-800/90 text-[11px]">본 계획서의 모든 금액 및 영업일정은 AI 추정치이므로, 방문 전 네이버 지도 또는 인스타그램 공지를 재확인하세요.</span>
+</div>
+</div>
+<button class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-sm transition">
+          네이버 지도에서 확인
+        </button>
+</div>
+</section>
+<!-- ============================================== -->
+<!-- DESKTOP STATE 4: ERROR / CONFLICT STATE -->
+<!-- ============================================== -->
+<section class="desk-content hidden max-w-2xl mx-auto py-10 space-y-6" id="desk-error">
+<!-- Top Alert Card -->
+<div class="bg-white rounded-3xl p-8 border border-red-200 shadow-xl space-y-6 text-left">
+<div class="flex items-start space-x-4">
+<div class="w-14 h-14 bg-red-100 text-[#ba1a1a] rounded-2xl flex items-center justify-center text-2xl shrink-0">
+<i class="fa-solid fa-triangle-exclamation"></i>
+</div>
+<div>
+<span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-[#ba1a1a] mb-1.5">
+              조건 충돌 감지 (AI 가드레일)
+            </span>
+<h2 class="text-xl font-extrabold text-slate-900">입력된 예산과 여행 기간이 양립하기 어렵습니다</h2>
+<p class="text-xs text-slate-600 mt-1 leading-relaxed">
+              입력하신 조건 <strong class="text-red-700">총 예산 150,000원</strong> 대비 선택된 <strong>서귀포 2박 3일 (2인)</strong>의 최소 필수 비용(기본 숙박 2박 + 렌터카 및 식비 약 480,000원)이 부족합니다.
+            </p>
+</div>
+</div>
+<!-- Two Resolution Suggestion Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+<!-- Suggestion Option 1 -->
+<div class="p-5 rounded-2xl border-2 border-sky-200 bg-sky-50/50 hover:border-[#0077b6] transition cursor-pointer flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold text-[#0077b6] bg-sky-100 px-2 py-0.5 rounded-md">제안 1 (추천)</span>
+<i class="fa-solid fa-wallet text-[#0077b6]"></i>
+</div>
+<h4 class="font-bold text-sm text-slate-900">예산 50만원 증액</h4>
+<p class="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                현재 2박 3일 일정을 그대로 유지하며, 실속형 숙소 및 가성비 로컬 맛집으로 계획을 구성합니다.
+              </p>
+</div>
+<button class="mt-4 w-full py-2 bg-[#0077b6] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#005d90] transition" onclick="switchDesktopState('process')">
+              예산 65만원으로 조정 생성
+            </button>
+</div>
+<!-- Suggestion Option 2 -->
+<div class="p-5 rounded-2xl border border-slate-200 bg-slate-50 hover:border-slate-300 transition cursor-pointer flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold text-slate-700 bg-slate-200 px-2 py-0.5 rounded-md">제안 2</span>
+<i class="fa-solid fa-clock-rotate-left text-slate-600"></i>
+</div>
+<h4 class="font-bold text-sm text-slate-900">1일 당일치기 코스로 압축</h4>
+<p class="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                숙박비를 제외하고 15만원 예산 범위 내에서 핵심 명소 중심 원데이 투어로 재설계합니다.
+              </p>
+</div>
+<button class="mt-4 w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition" onclick="switchDesktopState('process')">
+              당일 코스로 일정 변경
+            </button>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+<button class="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center" onclick="switchDesktopState('input')">
+<i class="fa-solid fa-arrow-left mr-1.5"></i>조건 직접 수정하기
+          </button>
+<button class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow transition" onclick="switchDesktopState('process')">
+            AI 기본값으로 자동 보정 후 계획 생성
+          </button>
+</div>
+</div>
+</section>
+</main>
+<script>
+    // Universal Switcher: Supports pure JS calls and radio sync
+    window.switchDesktopState = function(stateName) {
+      // 1. Check corresponding hidden radio button (for CSS peer selectors)
+      const targetRadio = document.getElementById('d-tab-' + stateName);
+      if (targetRadio) {
+        targetRadio.checked = true;
+      }
+
+      // 2. Hide all desktop content sections
+      const contents = document.querySelectorAll('.desk-content');
+      contents.forEach(function(el) {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+      });
+
+      // 3. Reset tab button styles
+      const tabs = document.querySelectorAll('.dstate-tab');
+      tabs.forEach(function(tab) {
+        tab.classList.remove('bg-[#0077b6]', 'bg-sky-600', 'text-white', 'shadow-sm');
+        tab.classList.add('hover:bg-slate-200', 'text-slate-600');
+      });
+
+      // 4. Show active content
+      const targetContent = document.getElementById('desk-' + stateName);
+      if (targetContent) {
+        targetContent.classList.remove('hidden');
+        targetContent.style.display = 'block';
+      }
+
+      // 5. Highlight active tab
+      const activeTab = document.getElementById('dtab-' + stateName);
+      if (activeTab) {
+        activeTab.classList.remove('hover:bg-slate-200', 'text-slate-600');
+        activeTab.classList.add('bg-[#0077b6]', 'text-white', 'shadow-sm');
+      }
+    };
+
+    // Flow for generating travel plan
+    window.startAiPlanningFlow = function() {
+      switchDesktopState('process');
+      // Transition to result after 1.5 seconds to simulate agent reasoning
+      setTimeout(function() {
+        switchDesktopState('result');
+      }, 1500);
+    };
+
+    // Initialize Default State on Load
+    document.addEventListener('DOMContentLoaded', function() {
+      switchDesktopState('input');
+    });
+  </script>
+</body></html>
