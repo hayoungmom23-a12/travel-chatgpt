@@ -1,4 +1,12 @@
-export type ApiErrorCode = "VALIDATION_ERROR" | "CONDITION_CONFLICT" | "RATE_LIMITED" | "GENERATION_FAILED";
+export type ApiErrorCode =
+  | "VALIDATION_ERROR"
+  | "CONDITION_CONFLICT"
+  | "API_KEY_SETUP_REQUIRED"
+  | "API_KEY_INVALID"
+  | "RATE_LIMITED"
+  | "GEMINI_UNAVAILABLE"
+  | "INVALID_PLAN_RESPONSE"
+  | "GENERATION_FAILED";
 
 export type PlanApiError = {
   code: ApiErrorCode;

@@ -22,12 +22,12 @@ export function PlannerShell() {
   const [view, setView] = useState<ViewState>("input");
   const [draft, setDraft] = useState<TripInput>(defaultTripInput);
   const [plan, setPlan] = useState<GeneratedPlan | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [generationError, setGenerationError] = useState<PlanApiError | null>(null);
   const [conflict, setConflict] = useState<PlanApiError | null>(null);
 
   async function handleSubmit(values: TripInput) {
     setDraft(values);
-    setErrorMessage("");
+    setGenerationError(null);
     setConflict(null);
     setView("processing");
     try {
@@ -38,11 +38,19 @@ export function PlannerShell() {
         setView("conflict");
         return;
       }
-      if (!response.ok || data?.status !== "ok" || !data.plan) throw new Error(data?.error?.message || "여행 계획을 만들지 못했습니다. 잠시 후 다시 시도하거나 조건을 수정해주세요.");
+      if (data?.status === "error" && data.error) {
+        setGenerationError(data.error);
+        setView("error");
+        return;
+      }
+      if (!response.ok || data?.status !== "ok" || !data.plan) throw new Error("여행 계획을 만들지 못했습니다. 잠시 후 다시 시도하거나 조건을 수정해주세요.");
       setPlan(data.plan);
       setView("result");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "여행 계획을 만들지 못했습니다.");
+      setGenerationError({
+        code: "GENERATION_FAILED",
+        message: error instanceof Error ? error.message : "여행 계획을 만들지 못했습니다.",
+      });
       setView("error");
     }
   }
@@ -56,7 +64,7 @@ export function PlannerShell() {
         {view === "processing" && <PlanningProgress destination={draft.destination} />}
         {view === "conflict" && conflict && <ConflictPanel conflict={conflict} onEditConditions={() => setView("input")} onApplyProposal={(proposal) => handleSubmit(applyConflictProposal(draft, proposal.type))} />}
         {view === "result" && plan && <><ResultSummary plan={plan} /><div className="mt-5 grid gap-5 lg:grid-cols-[1.4fr_1fr]"><DayCourseEditor plan={plan} onChange={setPlan} /><BudgetEditor plan={plan} onChange={setPlan} /></div><div className="mt-5 grid gap-5 lg:grid-cols-2"><ChecklistEditor plan={plan} onChange={setPlan} /><RainyAlternativeEditor plan={plan} onChange={setPlan} /></div><div className="mt-5"><NoticePanel notices={plan.notices} /></div><div className="mt-5"><ResultActions plan={plan} onEditConditions={() => setView("input")} onOpenSaved={(savedPlan) => { setPlan(savedPlan); setDraft(savedPlan.input); setView("result"); }} /></div></>}
-        {view === "error" && <ErrorPanel message={errorMessage} onRetry={() => handleSubmit(draft)} onEditConditions={() => setView("input")} />}
+        {view === "error" && generationError && <ErrorPanel error={generationError} onRetry={() => handleSubmit(draft)} onEditConditions={() => setView("input")} />}
       </section>
     </main>
   );

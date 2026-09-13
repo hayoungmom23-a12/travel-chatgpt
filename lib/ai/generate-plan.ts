@@ -9,7 +9,7 @@ type GeminiResponse = {
 
 const retryDelaysMs = [1_000, 2_000, 2_000] as const;
 
-class GeminiRequestFailure extends Error {
+export class GeminiRequestFailure extends Error {
   constructor(readonly status: number) {
     super("GEMINI_REQUEST_FAILED");
   }
